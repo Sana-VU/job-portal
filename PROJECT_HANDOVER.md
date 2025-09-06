@@ -131,49 +131,140 @@ pakistan-job-portal/
 
 1. **Prerequisites**:
 
-   - Node.js (v14 or higher)
+   - Node.js (v16 or higher)
    - MongoDB (local or Atlas)
+   - Git
 
-2. **Backend Setup**:
+2. **Initial Setup**:
+
+   ```bash
+   # Clone the repository
+   git clone https://github.com/Sana-VU/job-portal.git
+   cd job-portal
+   ```
+
+3. **Backend Setup**:
 
    ```bash
    cd backend
    npm install
-   # Create .env file with MONGO_URI and PORT
+
+   # Create .env file
+   echo "PORT=5000
+   MONGO_URI=mongodb://localhost:27017/job-portal
+   JWT_SECRET=your_jwt_secret_key
+   NODE_ENV=development" > .env
+
+   # Start development server
    npm run dev
    ```
 
-3. **Frontend Setup**:
+4. **Frontend Setup**:
    ```bash
    cd frontend
    npm install
-   # Create .env.local file with NEXT_PUBLIC_API_URL
+
+   # Create .env.local file
+   echo "NEXT_PUBLIC_API_URL=http://localhost:5000/api" > .env.local
+
+   # Start development server
    npm run dev
    ```
 
-## Testing
+5. **Database Setup**:
+   - Install MongoDB locally or use MongoDB Atlas
+   - The application will create necessary collections on first run
+   - Sample data can be imported using the provided script:
+     ```bash
+     cd backend
+     node scripts/seed-data.js
+     ```
 
+## Testing and Code Quality
+
+### Testing Framework
 - Backend tests are written using Vitest
 - Frontend component tests use Vitest and React Testing Library
 - Run tests with `npm test` in respective directories
 
+### Test Coverage
+- Backend: Unit tests for models and API endpoints
+- Frontend: Component tests for major UI elements
+- Current test coverage is approximately 60%
+
+### Running Tests
+```bash
+# Backend tests
+cd backend
+npm test
+
+# Frontend tests
+cd frontend
+npm test
+```
+
+### Code Quality Tools
+- ESLint for JavaScript/TypeScript linting
+- Prettier for code formatting
+- TypeScript for type checking in the frontend
+
+### Continuous Integration
+- GitHub Actions is set up to run tests on every push
+- Test coverage reports are generated during CI runs
+
 ## Deployment Instructions
 
-### Backend
+### Backend Deployment
 
-1. Set up MongoDB Atlas cluster
-2. Deploy to Render or Railway:
+1. **Set up MongoDB Atlas cluster**:
+   - Create a free cluster at [MongoDB Atlas](https://www.mongodb.com/cloud/atlas)
+   - Configure network access and database users
+   - Get your connection string
+
+2. **Deploy to Render**:
+   - Create a new Web Service on Render
    - Connect to GitHub repository
-   - Set environment variables (MONGO_URI, NODE_ENV=production)
-   - Build command: `npm install`
-   - Start command: `npm start`
+   - Set build command: `cd backend && npm install`
+   - Set start command: `cd backend && npm start`
+   - Add environment variables:
+     - `MONGO_URI`: Your MongoDB Atlas connection string
+     - `PORT`: 8080 (Render default)
+     - `NODE_ENV`: production
+     - `JWT_SECRET`: A secure random string
 
-### Frontend
-
-1. Deploy to Vercel:
-   - Connect to GitHub repository
-   - Set environment variables (NEXT_PUBLIC_API_URL=backend-url)
+3. **Alternative: Deploy to Railway**:
+   - Create new project and link to GitHub
+   - Select the repository and backend directory
+   - Add environment variables (same as above)
    - Deploy
+
+### Frontend Deployment
+
+1. **Deploy to Vercel**:
+   - Import project from GitHub repository
+   - Configure build settings:
+     - Framework preset: Next.js
+     - Root directory: frontend
+     - Build command: `npm run build`
+     - Output directory: .next
+   - Add environment variables:
+     - `NEXT_PUBLIC_API_URL`: Your backend API URL
+   - Deploy
+
+2. **Alternative: Deploy to Netlify**:
+   - Connect to GitHub repository
+   - Set base directory: frontend
+   - Set build command: `npm run build`
+   - Set publish directory: frontend/.next
+   - Add environment variables as above
+
+### Deployment Checklist
+
+- [ ] Update CORS settings in backend to allow production frontend URL
+- [ ] Test all API endpoints after deployment
+- [ ] Configure custom domain if needed
+- [ ] Set up SSL/TLS certificates
+- [ ] Configure monitoring and logging services
 
 ## Current Status and Roadmap
 
@@ -210,10 +301,60 @@ pakistan-job-portal/
 - [Frontend TODO List](./TODO_FRONTEND.md)
 - [GitHub Issues](./GITHUB_ISSUES.md)
 
+## Repository Information
+
+The project is hosted on GitHub at:
+- Repository URL: https://github.com/Sana-VU/job-portal.git
+- Main Branch: main
+
+### Version Control Workflow
+
+1. **Branch Strategy**:
+   - `main`: Production-ready code
+   - `develop`: Integration branch for features
+   - Feature branches: For new features (e.g., `feature/user-authentication`)
+   - Hotfix branches: For urgent fixes (e.g., `hotfix/login-bug`)
+
+2. **Contribution Process**:
+   - Create a new branch from `develop` for each feature
+   - Submit a pull request to merge into `develop`
+   - Regularly merge `develop` into `main` for releases
+
+### CI/CD Setup
+
+- GitHub Actions workflow is included for Continuous Integration
+- Tests are run automatically on pull requests
+- Automated deployment is planned but not fully configured
+
+## Environment Setup
+
+### Environment Variables
+
+#### Backend (.env)
+```
+PORT=5000
+MONGO_URI=mongodb://localhost:27017/job-portal
+JWT_SECRET=your_jwt_secret_key
+NODE_ENV=development
+```
+
+#### Frontend (.env.local)
+```
+NEXT_PUBLIC_API_URL=http://localhost:5000/api
+```
+
+## Post-Handover Steps
+
+For steps that need to be completed after the handover, please refer to the [POST_HANDOVER_STEPS.md](./POST_HANDOVER_STEPS.md) file.
+
 ## Contact Information
 
-For any questions or support regarding this project, please contact the previous developer or project manager.
+For any questions or support regarding this project, please contact:
+
+- Project Manager: [Project Manager Name] - [email@example.com]
+- Lead Developer: [Lead Developer Name] - [email@example.com]
+- Repository Owner: Sana-VU - [GitHub Profile](https://github.com/Sana-VU)
 
 ---
 
-_This document was created on September 5, 2025, and represents the current state of the project as of this date._
+_This document was last updated on September 6, 2025, and represents the current state of the project as of this date._
