@@ -1,5 +1,14 @@
 # Frontend TODOs (Next.js + Tailwind)
 
+## Image Upload Integration
+
+// TODO: Implement image upload UI
+// - Create JobImageUploader component (see IMAGE-DISPLAY-GUIDE.md)
+// - Add image upload to job creation/edit forms
+// - Display uploaded images properly in job listings
+// - Add image preview functionality
+// - Implement responsive image display
+
 ## pages/\_app.js
 
 // TODO: Global App wrapper

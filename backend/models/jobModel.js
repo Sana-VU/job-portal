@@ -2,82 +2,65 @@ const mongoose = require("mongoose");
 
 const jobSchema = new mongoose.Schema(
   {
-    title: {
+    title: { type: String, required: true, trim: true },
+    organization: { type: String, required: true, trim: true },
+    category: { type: String, index: true },
+    location: { type: String, index: true },
+    publishDate: { type: Date, required: true },
+    lastDate: { type: Date, required: true },
+    source: { type: String },
+    imageUrl: { type: String },
+    description: { type: String },
+    // Optional fields for enhanced job data
+    salaryMin: { type: Number, min: 0 },
+    salaryMax: { type: Number, min: 0 },
+    employmentType: {
       type: String,
-      required: [true, "Job title is required"],
-      trim: true,
-    },
-    organization: {
-      type: String,
-      required: [true, "Organization name is required"],
-      trim: true,
-    },
-    category: {
-      type: String,
-      required: [true, "Category is required"],
       enum: [
-        "IT & Software",
-        "Banking & Finance",
-        "Healthcare",
-        "Education",
-        "Engineering",
-        "Government",
-        "Sales & Marketing",
-        "Customer Service",
-        "Administrative",
-        "Other",
+        "Full-time",
+        "Part-time",
+        "Contract",
+        "Internship",
+        "Temporary",
+        "Freelance",
       ],
+      index: true,
     },
-    location: {
+    applyUrl: { type: String },
+    requirements: { type: String },
+    benefits: { type: String },
+    experience: { type: String },
+    education: { type: String },
+    skills: [{ type: String }],
+    tags: [{ type: String, index: true }],
+    status: {
       type: String,
-      required: [true, "Location is required"],
-      trim: true,
+      enum: ["active", "expired", "closed", "draft"],
+      default: "active",
+      index: true,
     },
-    source: {
-      type: String,
-      required: [true, "Source is required"],
-      trim: true,
-    },
-    publishDate: {
-      type: Date,
-      required: [true, "Publish date is required"],
-      default: Date.now,
-    },
-    lastDate: {
-      type: Date,
-      required: [true, "Last date to apply is required"],
-    },
-    description: {
-      type: String,
-      trim: true,
-    },
-    adImage: {
-      type: String, // URL to the image
-      required: [true, "Advertisement image is required"],
-    },
-    tags: [
-      {
-        type: String,
-        trim: true,
-      },
-    ],
-    isActive: {
-      type: Boolean,
-      default: true,
-    },
+    views: { type: Number, default: 0 },
+    applications: { type: Number, default: 0 },
   },
-  {
-    timestamps: true, // Adds createdAt and updatedAt
-  }
+  { timestamps: true }
 );
 
-// Text indexes for search functionality
+// Text index for full text search
 jobSchema.index({
   title: "text",
   organization: "text",
   description: "text",
-  tags: "text",
+  requirements: "text",
+  benefits: "text",
 });
+
+// Compound indexes for filtering and sorting
+jobSchema.index({ category: 1, location: 1, publishDate: -1 });
+jobSchema.index({ employmentType: 1, status: 1, publishDate: -1 });
+jobSchema.index({ salaryMin: 1, salaryMax: 1 });
+jobSchema.index({ status: 1, lastDate: 1 });
+jobSchema.index({ views: -1 });
+jobSchema.index({ applications: -1 });
 
 const Job = mongoose.model("Job", jobSchema);
 

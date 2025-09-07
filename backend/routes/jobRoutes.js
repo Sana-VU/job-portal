@@ -1,63 +1,11 @@
 const express = require("express");
-const { body, validationResult } = require("express-validator");
 const router = express.Router();
 const Job = require("../models/jobModel");
+const auth = require("../middleware/auth");
+const { body, validationResult } = require("express-validator");
 
-// Input validation middleware
-const validateJobInput = [
-  body("title").notEmpty().withMessage("Job title is required"),
-  body("organization").notEmpty().withMessage("Organization is required"),
-  body("category")
-    .notEmpty()
-    .withMessage("Category is required")
-    .isIn([
-      "IT & Software",
-      "Banking & Finance",
-      "Healthcare",
-      "Education",
-      "Engineering",
-      "Government",
-      "Sales & Marketing",
-      "Customer Service",
-      "Administrative",
-      "Other",
-    ])
-    .withMessage("Invalid category"),
-  body("location").notEmpty().withMessage("Location is required"),
-  body("source").notEmpty().withMessage("Source is required"),
-  body("publishDate").isISO8601().withMessage("Valid publish date is required"),
-  body("lastDate").isISO8601().withMessage("Valid last date is required"),
-  body("adImage").notEmpty().withMessage("Advertisement image is required"),
-];
-
-// Validation result middleware
-const checkValidationResult = (req, res, next) => {
-  const errors = validationResult(req);
-  if (!errors.isEmpty()) {
-    return res.status(400).json({ errors: errors.array() });
-  }
-  next();
-};
-
-// POST /api/jobs - Create a new job
-router.post("/", validateJobInput, checkValidationResult, async (req, res) => {
-  try {
-    const job = new Job(req.body);
-    await job.save();
-    res.status(201).json({
-      success: true,
-      data: job,
-    });
-  } catch (error) {
-    res.status(400).json({
-      success: false,
-      message: error.message,
-    });
-  }
-});
-
-// GET /api/jobs - Get all jobs with filtering
-router.get("/", async (req, res) => {
+// GET all jobs (public route)
+router.get("/", async (req, res, next) => {
   try {
     const {
       keyword,
@@ -67,127 +15,270 @@ router.get("/", async (req, res) => {
       page = 1,
       limit = 10,
     } = req.query;
+    const q = {};
+    if (keyword) q.$text = { $search: String(keyword) };
+    if (category) q.category = category;
+    if (location) q.location = location;
+    if (source) q.source = source;
 
-    // Build filter object
-    const filter = {};
+    const skip = (Number(page) - 1) * Number(limit);
+    const [items, total] = await Promise.all([
+      Job.find(q).sort({ publishDate: -1 }).skip(skip).limit(Number(limit)),
+      Job.countDocuments(q),
+    ]);
 
-    if (keyword) {
-      filter.$text = { $search: keyword };
+    res.json({ items, page: Number(page), limit: Number(limit), total });
+  } catch (e) {
+    next(e);
+  }
+});
+
+// GET job by ID (public route)
+router.get("/:id", async (req, res, next) => {
+  try {
+    const one = await Job.findById(req.params.id);
+    if (!one) return res.status(404).json({ message: "Not found" });
+
+    // Increment view count
+    await Job.findByIdAndUpdate(req.params.id, { $inc: { views: 1 } });
+
+    res.json(one);
+  } catch (e) {
+    next(e);
+  }
+});
+
+// POST create new job (protected route - admin only)
+router.post(
+  "/",
+  auth,
+  [
+    body("title").trim().isLength({ min: 3 }).withMessage("Title is required"),
+    body("organization")
+      .trim()
+      .isLength({ min: 2 })
+      .withMessage("Organization is required"),
+    body("publishDate").isISO8601().toDate().withMessage("Invalid publishDate"),
+    body("lastDate").isISO8601().toDate().withMessage("Invalid lastDate"),
+    body("category").optional().trim().escape(),
+    body("location").optional().trim().escape(),
+    body("source").optional().trim().escape(),
+    body("description").optional().trim(),
+    body("imageUrl").optional().isURL().withMessage("imageUrl must be a URL"),
+  ],
+  async (req, res, next) => {
+  try {
+    const errors = validationResult(req);
+    if (!errors.isEmpty()) {
+      return res.status(400).json({ message: "Validation failed", errors: errors.array() });
     }
 
-    if (category) {
-      filter.category = category;
+    const {
+      title,
+      organization,
+      category,
+      location,
+      publishDate,
+      lastDate,
+      source,
+      imageUrl,
+      description,
+      salaryMin,
+      salaryMax,
+      employmentType,
+      applyUrl,
+      requirements,
+      benefits,
+      experience,
+      education,
+      skills,
+      tags,
+      status,
+    } = req.body;
+
+    // Validation
+    if (!title || !organization || !publishDate || !lastDate) {
+      return res.status(400).json({
+        message:
+          "Missing required fields: title, organization, publishDate, lastDate",
+      });
     }
 
-    if (location) {
-      filter.location = { $regex: location, $options: "i" };
+    const newJob = new Job({
+      title,
+      organization,
+      category,
+      location,
+      publishDate,
+      lastDate,
+      source,
+      imageUrl,
+      description,
+      salaryMin,
+      salaryMax,
+      employmentType,
+      applyUrl,
+      requirements,
+      benefits,
+      experience,
+      education,
+      skills,
+      tags,
+      status: status || "active",
+    });
+
+    const savedJob = await newJob.save();
+    res.status(201).json(savedJob);
+  } catch (e) {
+    next(e);
+  }
+}
+);
+
+// PUT update job by ID (protected route - admin only)
+router.put(
+  "/:id",
+  auth,
+  [
+    body("publishDate").optional().isISO8601().toDate(),
+    body("lastDate").optional().isISO8601().toDate(),
+    body("imageUrl").optional().isURL(),
+  ],
+  async (req, res, next) => {
+  try {
+    const errors = validationResult(req);
+    if (!errors.isEmpty()) {
+      return res.status(400).json({ message: "Validation failed", errors: errors.array() });
     }
 
-    if (source) {
-      filter.source = { $regex: source, $options: "i" };
+    const jobId = req.params.id;
+    const updatedJob = await Job.findByIdAndUpdate(
+      jobId,
+      { $set: req.body },
+      { new: true, runValidators: true }
+    );
+
+    if (!updatedJob) {
+      return res.status(404).json({ message: "Job not found" });
     }
 
-    // Only show active jobs
-    filter.isActive = true;
+    res.json(updatedJob);
+  } catch (e) {
+    next(e);
+  }
+}
+);
 
-    // Execute query with pagination
-    const skip = (page - 1) * limit;
+// DELETE job by ID (protected route - admin only)
+router.delete("/:id", auth, async (req, res, next) => {
+  try {
+    const jobId = req.params.id;
+    const deletedJob = await Job.findByIdAndDelete(jobId);
 
-    const jobs = await Job.find(filter)
+    if (!deletedJob) {
+      return res.status(404).json({ message: "Job not found" });
+    }
+
+    res.json({ message: "Job deleted successfully" });
+  } catch (e) {
+    next(e);
+  }
+});
+
+// GET job statistics (public route)
+router.get("/stats/overview", async (req, res, next) => {
+  try {
+    const stats = await Job.aggregate([
+      {
+        $group: {
+          _id: null,
+          totalJobs: { $sum: 1 },
+          totalViews: { $sum: "$views" },
+          totalApplications: { $sum: "$applications" },
+          avgViews: { $avg: "$views" },
+          avgApplications: { $avg: "$applications" },
+        },
+      },
+    ]);
+
+    const categoryStats = await Job.aggregate([
+      {
+        $group: {
+          _id: "$category",
+          count: { $sum: 1 },
+          totalViews: { $sum: "$views" },
+        },
+      },
+      { $sort: { count: -1 } },
+      { $limit: 10 },
+    ]);
+
+    const locationStats = await Job.aggregate([
+      {
+        $group: {
+          _id: "$location",
+          count: { $sum: 1 },
+          totalViews: { $sum: "$views" },
+        },
+      },
+      { $sort: { count: -1 } },
+      { $limit: 10 },
+    ]);
+
+    const recentJobs = await Job.find({ status: "active" })
       .sort({ publishDate: -1 })
-      .skip(skip)
-      .limit(parseInt(limit));
-
-    // Get total count for pagination
-    const total = await Job.countDocuments(filter);
+      .limit(5)
+      .select("title organization location publishDate views");
 
     res.json({
-      success: true,
-      count: jobs.length,
-      totalPages: Math.ceil(total / limit),
-      currentPage: page,
-      data: jobs,
+      overview: stats[0] || {
+        totalJobs: 0,
+        totalViews: 0,
+        totalApplications: 0,
+        avgViews: 0,
+        avgApplications: 0,
+      },
+      topCategories: categoryStats,
+      topLocations: locationStats,
+      recentJobs,
     });
-  } catch (error) {
-    res.status(400).json({
-      success: false,
-      message: error.message,
-    });
+  } catch (e) {
+    next(e);
   }
 });
 
-// GET /api/jobs/:id - Get a single job
-router.get("/:id", async (req, res) => {
+// GET popular jobs (public route)
+router.get("/popular", async (req, res, next) => {
   try {
-    const job = await Job.findById(req.params.id);
+    const { limit = 10 } = req.query;
+    const popularJobs = await Job.find({ status: "active" })
+      .sort({ views: -1, applications: -1 })
+      .limit(Number(limit));
 
-    if (!job) {
-      return res.status(404).json({
-        success: false,
-        message: "Job not found",
-      });
-    }
-
-    res.json({
-      success: true,
-      data: job,
-    });
-  } catch (error) {
-    res.status(400).json({
-      success: false,
-      message: error.message,
-    });
+    res.json(popularJobs);
+  } catch (e) {
+    next(e);
   }
 });
 
-// PUT /api/jobs/:id - Update a job
-router.put("/:id", async (req, res) => {
+// GET jobs by employment type (public route)
+router.get("/type/:employmentType", async (req, res, next) => {
   try {
-    const job = await Job.findByIdAndUpdate(req.params.id, req.body, {
-      new: true,
-      runValidators: true,
-    });
+    const { employmentType } = req.params;
+    const { page = 1, limit = 10 } = req.query;
 
-    if (!job) {
-      return res.status(404).json({
-        success: false,
-        message: "Job not found",
-      });
-    }
+    const skip = (Number(page) - 1) * Number(limit);
+    const [items, total] = await Promise.all([
+      Job.find({ employmentType, status: "active" })
+        .sort({ publishDate: -1 })
+        .skip(skip)
+        .limit(Number(limit)),
+      Job.countDocuments({ employmentType, status: "active" }),
+    ]);
 
-    res.json({
-      success: true,
-      data: job,
-    });
-  } catch (error) {
-    res.status(400).json({
-      success: false,
-      message: error.message,
-    });
-  }
-});
-
-// DELETE /api/jobs/:id - Delete a job
-router.delete("/:id", async (req, res) => {
-  try {
-    const job = await Job.findByIdAndDelete(req.params.id);
-
-    if (!job) {
-      return res.status(404).json({
-        success: false,
-        message: "Job not found",
-      });
-    }
-
-    res.json({
-      success: true,
-      data: {},
-    });
-  } catch (error) {
-    res.status(400).json({
-      success: false,
-      message: error.message,
-    });
+    res.json({ items, page: Number(page), limit: Number(limit), total });
+  } catch (e) {
+    next(e);
   }
 });
 

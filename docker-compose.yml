@@ -1,0 +1,56 @@
+# Docker Compose configuration for Pakistan Job Portal
+# Note: 'version' is no longer needed in Compose specification
+
+services:
+  # MongoDB Service
+  mongo:
+    image: mongo:latest
+    container_name: job-portal-mongodb
+    ports:
+      - "27017:27017"
+    volumes:
+      - mongo_data:/data/db
+    environment:
+      - MONGO_INITDB_DATABASE=job-portal
+    networks:
+      - job-portal-network
+    restart: unless-stopped
+    healthcheck:
+      test: ["CMD", "mongosh", "--eval", "db.adminCommand('ping')"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+      start_period: 30s
+
+  # Backend API Service
+  backend:
+    build:
+      context: ./backend
+      dockerfile: Dockerfile
+    container_name: job-portal-backend
+    ports:
+      - "5000:5000"
+    volumes:
+      - ./backend:/app
+      - /app/node_modules
+    environment:
+      - PORT=5000
+      - MONGO_URI=mongodb://mongo:27017
+      - MONGO_DB=job-portal
+      - NODE_ENV=development
+      - JWT_SECRET=dev_dev_dev_change_me
+      - CORS_ORIGIN=http://localhost:3000
+    depends_on:
+      mongo:
+        condition: service_healthy
+    networks:
+      - job-portal-network
+    restart: unless-stopped
+
+networks:
+  job-portal-network:
+    driver: bridge
+
+volumes:
+  mongo_data:
+    driver: local

@@ -11,18 +11,19 @@ describe("GET /api/jobs", () => {
 
     // Check response structure
     expect(res.body).toBeDefined();
-    expect(res.body).toHaveProperty("success");
-    expect(res.body).toHaveProperty("count");
-    expect(res.body).toHaveProperty("data");
+    expect(res.body).toHaveProperty("items");
+    expect(res.body).toHaveProperty("page");
+    expect(res.body).toHaveProperty("limit");
+    expect(res.body).toHaveProperty("total");
 
-    // Check that data is an array
-    expect(Array.isArray(res.body.data)).toBe(true);
+    // Check that items is an array
+    expect(Array.isArray(res.body.items)).toBe(true);
 
     // If we have jobs, verify their structure
-    if (res.body.data.length > 0) {
-      const job = res.body.data[0];
+    if (res.body.items.length > 0) {
+      const job = res.body.items[0];
       expect(job).toHaveProperty("title");
-      expect(job).toHaveProperty("company");
+      expect(job).toHaveProperty("organization");
       expect(job).toHaveProperty("location");
     }
   });

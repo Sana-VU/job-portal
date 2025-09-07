@@ -1,0 +1,79 @@
+config:
+  target: '{{ $processEnvironment.API_URL || "http://localhost:5000" }}'
+  phases:
+    - duration: 60
+      arrivalRate: 5
+      name: "Warm up"
+    - duration: 120
+      arrivalRate: 10
+      name: "Ramp up load"
+    - duration: 300
+      arrivalRate: 20
+      name: "Sustained load"
+    - duration: 60
+      arrivalRate: 5
+      name: "Ramp down"
+  defaults:
+    headers:
+      Content-Type: "application/json"
+  plugins:
+    metrics-by-endpoint:
+      useOnlyRequestNames: true
+
+scenarios:
+  - name: "Health Check"
+    weight: 10
+    flow:
+      - get:
+          url: "/api/health"
+          capture:
+            - json: "$.status"
+              as: "health_status"
+
+  - name: "Get Jobs List"
+    weight: 40
+    flow:
+      - get:
+          url: "/api/jobs"
+          qs:
+            limit: 10
+            page: 1
+          capture:
+            - json: "$.items"
+              as: "jobs"
+            - json: "$.total"
+              as: "total_jobs"
+
+  - name: "Search Jobs"
+    weight: 30
+    flow:
+      - get:
+          url: "/api/jobs"
+          qs:
+            keyword: "{{ $randomString() }}"
+            category: "{{ $pick(['IT', 'Government', 'Education', 'Healthcare']) }}"
+            location: "{{ $pick(['Karachi', 'Lahore', 'Islamabad', 'Rawalpindi']) }}"
+            limit: 20
+            page: 1
+
+  - name: "Get Job Details"
+    weight: 15
+    flow:
+      - get:
+          url: "/api/jobs"
+          qs:
+            limit: 1
+          capture:
+            - json: "$.items[0]._id"
+              as: "job_id"
+      - get:
+          url: "/api/jobs/{{ job_id }}"
+
+  - name: "Version Check"
+    weight: 5
+    flow:
+      - get:
+          url: "/api/version"
+          capture:
+            - json: "$.version"
+              as: "app_version"

@@ -8,7 +8,7 @@ The Pakistan Job Portal is a modern web application inspired by PakistanJobsBank
 
 ### Frontend
 
-- **Framework**: Next.js with TypeScript
+- **Framework**: Next.js 15.5.2 with TypeScript
 - **Styling**: Tailwind CSS
 - **State Management**: React Hooks
 - **HTTP Client**: Axios
@@ -19,8 +19,8 @@ The Pakistan Job Portal is a modern web application inspired by PakistanJobsBank
 
 ### Backend
 
-- **Framework**: Node.js + Express.js
-- **Database**: MongoDB with Mongoose ODM
+- **Framework**: Node.js v22.14.0 + Express.js v5.1.0
+- **Database**: MongoDB with Mongoose ODM v8.18.0
 - **Authentication**: JWT (planned but not fully implemented)
 - **Validation**: Express Validator
 - **Security**: CORS, Helmet, Morgan for security and logging
@@ -131,9 +131,10 @@ pakistan-job-portal/
 
 1. **Prerequisites**:
 
-   - Node.js (v16 or higher)
+   - Node.js (v22 or higher)
    - MongoDB (local or Atlas)
    - Git
+   - Docker and Docker Compose (for containerized setup)
 
 2. **Initial Setup**:
 
@@ -151,15 +152,18 @@ pakistan-job-portal/
 
    # Create .env file
    echo "PORT=5000
-   MONGO_URI=mongodb://localhost:27017/job-portal
-   JWT_SECRET=your_jwt_secret_key
-   NODE_ENV=development" > .env
+   MONGO_URI=mongodb://127.0.0.1:27017
+   MONGO_DB=job-portal
+   NODE_ENV=development
+   JWT_SECRET=dev_dev_dev_change_me
+   CORS_ORIGIN=http://localhost:3000" > .env
 
    # Start development server
    npm run dev
    ```
 
 4. **Frontend Setup**:
+
    ```bash
    cd frontend
    npm install
@@ -172,6 +176,7 @@ pakistan-job-portal/
    ```
 
 5. **Database Setup**:
+
    - Install MongoDB locally or use MongoDB Atlas
    - The application will create necessary collections on first run
    - Sample data can be imported using the provided script:
@@ -180,19 +185,35 @@ pakistan-job-portal/
      node scripts/seed-data.js
      ```
 
+6. **Docker Setup (Alternative)**:
+   - Use Docker Compose to run MongoDB and backend services:
+
+     ```bash
+     # Start services
+     docker-compose up -d
+
+     # Seed database
+     docker-compose exec backend node scripts/seed-data.js
+     ```
+
+   - See [DOCKER_SETUP.md](./DOCKER_SETUP.md) for detailed Docker instructions
+
 ## Testing and Code Quality
 
 ### Testing Framework
+
 - Backend tests are written using Vitest
 - Frontend component tests use Vitest and React Testing Library
 - Run tests with `npm test` in respective directories
 
 ### Test Coverage
+
 - Backend: Unit tests for models and API endpoints
 - Frontend: Component tests for major UI elements
 - Current test coverage is approximately 60%
 
 ### Running Tests
+
 ```bash
 # Backend tests
 cd backend
@@ -204,11 +225,13 @@ npm test
 ```
 
 ### Code Quality Tools
+
 - ESLint for JavaScript/TypeScript linting
 - Prettier for code formatting
 - TypeScript for type checking in the frontend
 
 ### Continuous Integration
+
 - GitHub Actions is set up to run tests on every push
 - Test coverage reports are generated during CI runs
 
@@ -217,11 +240,13 @@ npm test
 ### Backend Deployment
 
 1. **Set up MongoDB Atlas cluster**:
+
    - Create a free cluster at [MongoDB Atlas](https://www.mongodb.com/cloud/atlas)
    - Configure network access and database users
    - Get your connection string
 
 2. **Deploy to Render**:
+
    - Create a new Web Service on Render
    - Connect to GitHub repository
    - Set build command: `cd backend && npm install`
@@ -241,6 +266,7 @@ npm test
 ### Frontend Deployment
 
 1. **Deploy to Vercel**:
+
    - Import project from GitHub repository
    - Configure build settings:
      - Framework preset: Next.js
@@ -270,14 +296,20 @@ npm test
 
 ### Completed
 
-- Basic backend API with CRUD operations
-- Frontend homepage and job listing interfaces
-- Job search and filtering functionality
+- Backend API with CRUD operations for jobs
+- MongoDB integration with proper schema and indexing
+- Health check endpoint returning DB connection status
+- Frontend homepage and job listing interfaces with responsive design
+- Job search and filtering functionality by keyword, category, location, etc.
+- Job details page with complete job information display
+- Sample data seeding script with realistic job postings
+- Environment configuration for both backend and frontend
 
 ### In Progress
 
 - Admin authentication
 - Image upload functionality
+- SVG image handling in Next.js (currently shows warnings about dangerouslyAllowSVG)
 - Tests and bug fixes
 
 ### Future Plans
@@ -291,7 +323,9 @@ npm test
 
 - Authentication not fully implemented
 - Image upload feature needs implementation
+- SVG handling in Next.js: Current warnings about SVG images requiring the "unoptimized" property in the Image component
 - Some responsive design issues on specific mobile devices
+- Warning about multiple lockfiles detected in Next.js (can be resolved by setting `outputFileTracingRoot` in next.config.js)
 
 ## Additional Resources
 
@@ -304,12 +338,14 @@ npm test
 ## Repository Information
 
 The project is hosted on GitHub at:
+
 - Repository URL: https://github.com/Sana-VU/job-portal.git
 - Main Branch: main
 
 ### Version Control Workflow
 
 1. **Branch Strategy**:
+
    - `main`: Production-ready code
    - `develop`: Integration branch for features
    - Feature branches: For new features (e.g., `feature/user-authentication`)
@@ -331,14 +367,18 @@ The project is hosted on GitHub at:
 ### Environment Variables
 
 #### Backend (.env)
+
 ```
 PORT=5000
-MONGO_URI=mongodb://localhost:27017/job-portal
-JWT_SECRET=your_jwt_secret_key
+MONGO_URI=mongodb://127.0.0.1:27017
+MONGO_DB=job-portal
 NODE_ENV=development
+JWT_SECRET=dev_dev_dev_change_me
+CORS_ORIGIN=http://localhost:3000
 ```
 
 #### Frontend (.env.local)
+
 ```
 NEXT_PUBLIC_API_URL=http://localhost:5000/api
 ```
@@ -354,6 +394,58 @@ For any questions or support regarding this project, please contact:
 - Project Manager: [Project Manager Name] - [email@example.com]
 - Lead Developer: [Lead Developer Name] - [email@example.com]
 - Repository Owner: Sana-VU - [GitHub Profile](https://github.com/Sana-VU)
+
+## Running the Application
+
+### Option 1: Standard Setup
+
+#### Starting the Backend
+
+```bash
+cd backend
+npm install
+node server.js
+```
+
+The backend will start on port 5000. You can access the health endpoint at http://localhost:5000/api/health and the jobs endpoint at http://localhost:5000/api/jobs.
+
+#### Seeding Sample Data
+
+```bash
+cd backend
+node scripts/seed-data.js
+```
+
+This will populate the MongoDB database with sample job postings that can be viewed in the frontend.
+
+#### Starting the Frontend
+
+```bash
+cd frontend
+npm install
+npm run dev
+```
+
+The frontend will start on port 3000. You can access it at http://localhost:3000.
+
+### Option 2: Docker Setup
+
+Run the entire stack (MongoDB + Backend) with Docker:
+
+```bash
+# Start services
+docker-compose up -d
+
+# Seed database
+docker-compose exec backend node scripts/seed-data.js
+
+# Start frontend separately
+cd frontend
+npm install
+npm run dev
+```
+
+For detailed Docker instructions, see [DOCKER_SETUP.md](./DOCKER_SETUP.md).
 
 ---
 
